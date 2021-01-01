@@ -25,7 +25,7 @@ if(
 ?>
 <?php
 // #####################################################################
-define("DATA_PATH", "/var/www/db.koegler-reisedienst.de/data");
+define("DATA_PATH", "/var/www/db.koegler-reisedienst.de/data/");
 define("PREVIEW", "/var/www/usr/preview.sh");
 // #####################################################################
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
