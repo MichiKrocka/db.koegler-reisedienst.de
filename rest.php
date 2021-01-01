@@ -25,8 +25,8 @@ if(
 ?>
 <?php
 // #####################################################################
-define("DATA_PATH", "/var/www/data/");
-define("PREVIEW", "/var/www/data/bermuda/preview.sh");
+define("DATA_PATH", "/var/www/db.koegler-reisedienst.de/data");
+define("PREVIEW", "/var/www/usr/preview.sh");
 // #####################################################################
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
