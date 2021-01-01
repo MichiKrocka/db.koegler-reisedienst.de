@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html style="width:100%;height:100%;overflow:hidden">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <title class="lang">Scope</title>
+  </head>
+<style type="text/css">
+<!--
+html,body {
+  width:100%;
+  height:100%;
+  border-collapse: collapse;
+  -moz-box-sizing:border-box;
+  -webkit-box-sizing:border-box;
+  box-sizing:border-box;
+  border:0;
+  padding:2px 15px 2px 15px;
+  margin:0;
+  overflow:hidden;
+}
+#id_Ext {
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  width:100%;
+  height:100%;
+  padding:0;
+  margin:0;
+  overflow:auto;
+}
+#id_Note {
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  width:100%;
+  height:50px;
+  overflow:auto;
+}
+-->
+</style>
+<script async type="text/javascript" src="/lib/js/fallback.min.js"></script>
+<script type="text/javascript">
+// #####################################################################
+var oFallback = {
+  // css
+  'css_ui': [
+    'https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.min.css',
+    'themes/base/jquery-ui.min.css'
+  ],
+  'css_awesome': [
+    'https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css',
+    '/lib/css/font-awesome.min.css'
+  ],
+  'css_tables': [
+    '/lib/css/jquery.mk.tables.css'
+  ],
+  // js
+  'jQuery': [
+    'https://code.jquery.com/jquery-3.1.1.min.js',
+    '/lib/js/jquery.min.js'
+  ],
+  'jQuery.ui': [
+    'https://code.jquery.com/ui/1.12.1/jquery-ui.min.js',
+    '/lib/js/jquery-ui.min.js'
+  ],
+  'set_lang': [
+    '/lib/js/locale.js'
+  ],
+  'jQuery().mousewheel': [
+    '/lib/js/jquery.mousewheel.min.js'
+  ],
+  'jQuery.printf': [
+    '/lib/js/jquery.printf.min.js'
+  ],
+  'jQuery().tables': [
+    '/lib/js/jquery.mk.tables.js'
+  ],
+  'mysqlDataModel': [
+    '/lib/js/jquery.mk.tables.mysql.js'
+  ],
+  'saveAs': [
+    '/lib/js/FileSaver.min.js'
+  ],
+  'data_trans': [
+    '/lib/js/data_trans.js'
+  ],
+  'date_time': [
+    '/lib/js/date_time.js'
+  ]
+};
+// #####################################################################
+function load(){
+  if(location.href.substr(-1) == "#"){
+    for(var o in oFallback){
+      oFallback[o].reverse();
+    }
+  }
+  var E = document.getElementById("id_Start"),
+      i = 0,
+      T = setInterval(function(){
+        E.innerHTML = ++i;
+      }, 1000);
+  fallback.load(
+    oFallback,
+    {
+      shim: {
+        'jQuery.ui':            ['jQuery'],
+        'jQuery.printf':        ['jQuery.ui'],
+        'set_lang':             ['jQuery'],
+        'jQuery().mousewheel':  ['jQuery'],
+        'jQuery().tables':      ['jQuery.ui'],
+        'sqliteDataModel':      ['jQuery'],
+        'data_trans':           ['saveAs']
+      }
+    }
+  );
+  fallback.ready(function(){
+    clearInterval(T);
+    $("#id_Start").remove();
+    $("#id_Ext").show();
+    start();
+  });
+}
+// #####################################################################
+var  DIR_LANG = opener.DIR_LANG,         // directory with languages
+     DEFAULT_LANG;
+// #####################################################################
+function start(){
+  var $T,
+      File = null,
+      Ext  = $.parseJSON(localStorage.getItem("databankExt"));
+  // -------------------------------------------------------------------
+  $("#id_Files").on("change", function(ev){
+    fileUpload(ev);
+  });
+  // -------------------------------------------------------------------
+  $("#id_ui_css").attr("href", Ext.theme);
+  DEFAULT_LANG = get_lang(),
+  set_lang(DEFAULT_LANG);
+  // -------------------------------------------------------------------
+  $(window)
+  .on("unload", function(ev){
+    Ext.P = [
+      $(window).width(),
+      $(window).height(),
+      window.screenY,
+      window.screenX
+    ];
+    localStorage.setItem("databankExt", JSON.stringify(Ext));
+  })
+  .on("storage", function(ev){
+    Ext = $.parseJSON(ev.originalEvent.newValue);
+    $T.tables("option", {
+      filtFix:   $.sprintf("mid=%i AND tab='%s'", Ext.mid, Ext.tab)
+    });
+    $T.tables("refresh");
+  })
+  .on("resize", function(ev){
+    $("#id_Note").height(0);
+    if(window.T)
+      clearTimeout(window.T);
+    window.T = setTimeout(function(){
+      $T.focus();
+      resize();
+    }, 1000);
+  });
+  // -------------------------------------------------------------------
+  $("#id_multi")
+  .bind("change", function(ev) {
+    var files = this.files;
+    for(var i = 0,I = files.length;i < I;i++){
+      File = files[i];
+      $("input[name=name]", "#id_Ext_Form").val(File.name);
+      $("input[name=ext]",  "#id_Ext_Form").val(File.name.replace(/.*\./g, ""));
+      $("input[name=mime]", "#id_Ext_Form").val(File.type);
+    }
+  });
+  // -------------------------------------------------------------------
+  $T = $("#id_Ext").tables({
+    colModel: [{
+      indx:   "id",
+      title:  "ID",
+      show:    true,
+      search:  false,
+      align:  "right",
+      width:  "4em"
+    },{
+      indx:   "stmp",
+      title:  "Stamp",
+      show:    false,
+      search:  false,
+      align:  "center",
+      width:  "10em"
+    },{
+      indx:   "name",
+      title:  "Name",
+      show:    true,
+      search:  true,
+      align:  "left",
+      width:  "20em"
+    },{
+      indx:   "ext",
+      title:  "Extension",
+      show:    true,
+      search:  false,
+      align:  "center",
+      width:  "5em"
+    },{
+      indx:   "note",
+      title:  "Note",
+      show:    true,
+      search:  true,
+      align:  "left",
+      width:  "40em"
+    }],
+    dataModel: $.extend({}, mysqlDataModel),
+    alignTitle: "center",
+    Left:       3,
+    Header:     null,
+    Footer:     null,
+    Icons:
+      '<button data-choice="DN" title="Download"><i class="fa fa-download"></i></button>'+
+      '<button data-choice="UP" title="Upload"><i class="fa fa-upload"></i></button>',
+    ID:         "id",
+    recId:      0,
+    filtFix:    $.sprintf("mid=%i AND tab='%s'", Ext.mid, Ext.tab),
+
+    User:       opener.oUser.dbuser, // dbuser
+    Sign:       "EXT",     // navig identification
+
+    SQL_SysBase:  opener.SQL_SYS_BASE,
+    SQL_SysTable: opener.SQL_SYS_TABLE,
+    SQL_Base:     opener.SQL_SYS_BASE,
+    SQL_Table:    "ext",
+    SQL_Query:
+      'SELECT * FROM ext',
+    // functions + events
+    i18n: _,
+    refreshRec: function(ev, ui){
+      if(ui.REC.length == 0){
+      } else if(ui.REC[0].preview == ""){
+      } else {
+      }
+      if(File !== null){
+        upload(ui);
+      }
+    },
+    clickButton: function(ev, ui){
+      switch(ui.choice){
+        case "DN":
+          if(ui.data.length == 0)
+            return;
+          var Path = $.sprintf(
+            "%s/%06i.%06i.%s",
+            Ext.tab, Ext.mid, ui.data[0].id, ui.data[0].ext
+          );
+          submit_post_via_hidden_form("/loa", {
+            id:  "259e88811b229050b08679b67147b4ab",
+            path: Path
+          });
+          break;
+          window.open($.sprintf(
+            "data/%s/%06i.%06i.%s",
+            Ext.tab, Ext.mid, ui.data[0].id, ui.data[0].ext
+          ));
+          break;
+        case "UP":
+          $("button[data-choice='INSERT']", $T).click();
+          break;
+        default:
+          opener.console.log(ui.choice);
+      }
+    },
+    beforeEdit: function(ev, ui){
+      $("button", ui.form).button("enable");
+      if(ui.insert){
+        $("#id_multi").click();
+      }
+    },
+    closeEdit: function(ev, ui){
+      $("button", ui.form).button("disable");
+      if(ui.cancel)
+        return;
+    },
+    build: function(ui){
+      $(window).trigger("resize");
+      $("input[name=mid]", "#id_Ext").data("default", Ext.mid);
+      $("input[name=tab]", "#id_Ext").data("default", Ext.tab);
+    }
+  });
+  // -----------------------------------------------------------------
+  function resize(){
+    var H0 = $("#id_Ext").height(),
+        P = $("#id_Note").position();
+    $("#id_Note").height(H0 - P.top);
+  }
+  // -----------------------------------------------------------------
+  function upload(ui){
+    var reader = new FileReader();
+    reader.onload = (function(theFile) {
+      return function(e) {
+        var Form = new FormData();
+        Form.append("file", File);
+        Form.append("id", "259e88811b229050b08679b67147b4ab");
+        Form.append("path", $.sprintf(
+          "%s/%06i.%06i.%s", Ext.tab, ui.REC[0].mid, ui.REC[0].id, ui.REC[0].ext
+        ));
+        $.ajax({
+          url: '/sto',
+          data: Form,
+          dataType: 'text',
+          processData: false,
+          contentType: false,
+          type: 'POST',
+          success: function(data){
+            File = null;
+          }
+        });
+      };
+    })(File);
+    reader.readAsBinaryString(File);
+  }
+};
+// #####################################################################
+function submit_post_via_hidden_form(url, params) {
+  var f = $("<form method='POST' style='display:none;'></form>").attr({
+    action: url
+  }).appendTo(document.body);
+  for(var i in params) {
+    if(params.hasOwnProperty(i)) {
+      $('<input type="hidden" />').attr({
+        name: i,
+        value: params[i]
+      }).appendTo(f);
+    }
+  }
+  f.submit();
+  f.remove();
+}
+// #####################################################################
+</script>
+<body onload="load()" style="width:100%;height:100%">
+  <div id="id_Start"></div>
+  <div id="id_Ext" tabindex="1" style="display:none" class="ui-widget-content">
+    <form id="id_Ext_Form" style="display:block" class="mk-tables-form">
+      <input type="submit" tabindex="-1" style="position:absolute;top:-1000px;display:none">
+      <input name="mid" class="upd" type="hidden">
+      <table id="id_Ext_Table" tabindex="2">
+        <tbody>
+          <tr>
+            <td class="ui-widget-content ui-state-disabled" style="width:1%">
+              <input name="id" style="width:4em;text-align:center;background:transparent" type="text" disabled>
+            </td>
+            <td class="ui-widget-content ui-state-disabled" style="width:1%">
+              <input name="stmp" style="width:10em;text-align:center;background:transparent" type="text" disabled>
+            </td>
+            <td class="ui-widget-content ui-state-disabled" style="width:1%">
+              <input name="tab" style="width:10em;text-align:center;background:transparent" type="text" class="upd" disabled>
+            </td>
+            <td class="ui-widget-header" style="width:1%">Name</td>
+            <td class="ui-widget-content" style="">
+              <input type="text" name="name" class="upd">
+            </td>
+            <td class="ui-widget-content ui-state-disabled" style="width:1%">
+              <input name="ext" style="width:4em;text-align:center;background:transparent" type="text" class="upd" disabled>
+            </td>
+            <td class="ui-widget-content ui-state-disabled" style="width:1%">
+              <input name="mime" style="width:10em;text-align:center;background:transparent" type="text" class="upd" disabled>
+            </td>
+            <td class="ui-widget-header" style="width:1%">Note</td>
+          </tr>
+          <tr>
+            <td class="ui-widget-content" colspan="8">
+              <textarea name="note" id="id_Note" style="min-height:10em" class="upd"></textarea>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </form>
+  </div>
+  <input id="id_multi" type="file" style="display:none">
+</body>
+</html>

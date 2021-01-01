@@ -1,0 +1,342 @@
+<style type="text/css">
+<!--
+#id_Vhsen {
+  width:100%;
+  height:auto;
+  overflow:auto;
+}
+#id_Vhsen .mk-content-right,
+#id_Vhsen .mk-search,
+#id_Vhsen .mk-header {
+  border:0;
+}
+#id_Vhsen .mk-footer {
+  border-right-width:0;
+  border-bottom-width:0;
+}
+#id_Vhsen_Form ul.contact {
+  overflow: auto;
+  overflow-x: hidden;
+  height: 50px;
+}
+-->
+</style>
+<script language="JavaScript" type="text/javascript">
+// #####################################################################
+jQuery(function($){
+  // -------------------------------------------------------------------
+  var $T,
+      slfMenuFile = oUser.menu,
+      eEdit = null,
+      xEdit = false;
+  // -------------------------------------------------------------------
+  make();
+  // -------------------------------------------------------------------
+  function selectMenu(ui){
+    var oldMenuFile  = $(ui.oldMenu).data("menu"),
+        newMenuFile  = $(ui.newMenu).data("menu");
+
+    if(DEBUG > 0 && newMenuFile != slfMenuFile){
+      var div_menu = $("#id_Content>div").filter('[data-menu="'+oldMenuFile+'"]');
+      $.Topic("selectMenu").unsubscribe(selectMenu);
+      $.Topic("logout").unsubscribe(saveOption);
+      $T.tables("destroy");
+      div_menu.detach();
+      return
+    }
+
+    if(newMenuFile == slfMenuFile){
+      $.Topic("logout").subscribe(saveOption);
+      if(typeof $T != "undefined")
+        $T
+        .tables("refresh")
+        .focus();
+    } else if(oldMenuFile == slfMenuFile){
+      saveOption();
+      $.Topic("logout").unsubscribe(saveOption);
+    }
+  }
+  // -------------------------------------------------------------------
+  function saveOption(){
+    $T.tables("saveOption").focus();
+  }
+  // -------------------------------------------------------------------
+  function make(){
+    //localStorage.removeItem("databankExt");  
+    if(localStorage.getItem("databankExt") === null)
+      localStorage.setItem("databankExt", "{}");
+    $.Topic("selectMenu").subscribe(selectMenu);
+    $.Topic("logout").subscribe(saveOption);
+    $T = $("#id_Vhsen").tables({
+      colModel: [{
+        indx:   "id",
+        title:  "ID",
+        show:    true,
+        search:  true,
+        align:  "right",
+        width:  "3em"
+      },{
+        indx:   "name",
+        title:  "Name",
+        show:    true,
+        search:  true,
+        align:  "left",
+        width:  "10em"
+      },{
+        indx:   "kontakt",
+        title:  "Contact",
+        show:    true,
+        search:  true,
+        align:  "left",
+        width:  "10em"
+      },{
+        indx:   "CONCAT_WS(' ',strasse, PLZ, ort, region, land, staat)",
+        title:  "Address",
+        show:    true,
+        search:  true,
+        align:  "left",
+        width:  "30em"
+      },{
+        indx:   "notiz",
+        title:  "Note",
+        show:    false,
+        search:  true,
+        align:  "left",
+        width:  "12em"
+      },{
+        indx:   "stmp",
+        title:  "Stamp",
+        show:    false,
+        search:  false,
+        align:  "center",
+        width:  "10em"
+      }],
+      dataModel: $.extend({}, mysqlDataModel),
+      alignTitle: "center",
+      Left:       3,
+      Header:     null,
+      Footer:     null,
+      Icons:
+        '<button data-choice="EXTERN" title="Extern"><i class="fa fa-paperclip"></i></button>'+
+        '<button data-choice="GOOGLE" title="Google"><i class="fa fa-globe"></i></button>',
+      ID:         "id",
+      recId:      0,
+
+      User:       oUser.dbuser, // dbuser
+      Sign:       "Vhsen",     // navig identification
+
+      SQL_SysBase:  SQL_SYS_BASE,
+      SQL_SysTable: SQL_SYS_TABLE,
+      SQL_Base:     SQL_SYS_BASE,
+      SQL_Table:    "vhsen",
+      SQL_Query:
+        'SELECT *,'+
+//        '(SELECT CONCAT("[",GROUP_CONCAT(JSON_OBJECT("p",Protokol,"v",Val,"t",Txt,"s",Suf)),"]") FROM kontakt WHERE Tab="programme" AND programme.id=kontakt.mid) AS contact,'+
+        '(SELECT COUNT(*) FROM ext WHERE ext.tab="vhsen" AND ext.mid=vhsen.id) AS ext '+
+        'FROM vhsen',
+      // functions + events
+      i18n: _,
+      refreshRec:   refreshRec,
+      clickButton: function(ev, ui){
+        switch(ui.choice){
+          case "INS":
+            contact_edit(null, eEdit, $("ul.contact", "#id_Vhsen_Form"));
+            break;
+          case "GOOGLE":
+          {
+            var url = [];
+            if($("input[name=strasse]").val() != "")
+              url.push($("input[name=strasse]").val());
+            if($("input[name=plz]").val() != "")
+              url.push($("input[name=plz]").val());
+            if($("input[name=ort]").val() != "")
+              url.push($("input[name=ort]").val());
+            if($("input[name=staat]").val() != "")
+              url.push($("input[name=staat]").val());
+            url = "//maps.google.com?q="+url.join(",");
+            if(window.google && !window.google.closed)
+              window.google.close();
+            window.google = window.open(url);//, "_blank");
+            window.google.focus();
+            break;
+          }
+          case "EXTERN":
+            openExt(ui.element.options.SQL_Table, ui.element.options.recId);
+            break;
+          default:
+            console.log(ui.choice);
+        }
+      },
+      beforeEdit: function(ev, ui){
+        var contact = $("input[name=contact]", "#id_Vhsen_Form").val();
+        if(contact == "")
+          $("input[name=contact]", "#id_Vhsen_Form").val("[]");
+        xEdit = true;
+        $("button", ui.form).button("enable");
+        if(ui.insert)
+          $("ul.contact", "#id_Vhsen_Form").text("");
+      },
+      closeEdit: function(ev, ui){
+        $("button", ui.form).button("disable");
+        xEdit = false;
+        contact_make(eEdit, $("ul.contact", "#id_Vhsen_Form"));
+        if(ui.cancel)
+          return;
+      },
+      build: goTo
+    });
+    // -----------------------------------------------------------------
+    eEdit = $("input[name=contact]", "#id_Vhsen");
+    $("ul.contact", "#id_Vhsen_Form")
+    .height($("ul.contact", "#id_Vhsen_Form").parent().height())
+    .menu({
+      select: function(ev, ui){
+        if(xEdit){
+          contact_edit($(ui.item[0]).index(), eEdit, $(this));
+        } else {
+          contact_sel($(ui.item[0]).index(), eEdit);
+        }
+      }
+    });
+    // -----------------------------------------------------------------
+    // event handler for refresh record
+    function refreshRec(ev, ui){
+      var Ext = $.parseJSON(localStorage.getItem("databankExt"));
+      Ext.tab = $T.tables("option", "SQL_Table");
+      Ext.mid = ui.REC.length ? ui.REC[0].id : -1;
+      localStorage.setItem("databankExt", JSON.stringify(Ext));
+      if(ui.REC.length == 0){
+        $("ul.contact", "#id_Vhsen_Form").text("");
+        return;
+      }
+      contact_make(eEdit, $("ul.contact", "#id_Vhsen_Form"));
+    }
+  }
+  // -------------------------------------------------------------------
+  function goTo(){
+    change_all_lang($T);
+    $("div.c_tabs", $T).tabs();
+    setTimeout(function(){
+      $T
+      .tables("refresh")
+      .focus();
+    }, 1000);
+  }
+  // -------------------------------------------------------------------
+});
+// #####################################################################
+</script>
+<div id="id_Vhsen" tabindex="1" style="display:none">
+  <form id="id_Vhsen_Form" style="display:block" class="mk-tables-form">
+    <input type="submit" tabindex="-1" style="position:absolute; top:-1000px;display:none">
+    <input name="contact" data-default=" []" class="upd" type="hidden" disabled>
+    <table id="id_Vhsen_Table" tabindex="2">
+      <tbody>
+        <tr>
+          <td class="ui-widget-content ui-state-disabled" style="width:1%">
+            <input name="id" style="width:4em;text-align:center;background:transparent" type="text" disabled>
+          </td>
+          <td class="ui-widget-content ui-state-disabled" style="width:1%">
+            <input name="stmp" style="width:10em;text-align:center;background:transparent" type="text" disabled>
+          </td>
+          <td class="ui-widget-header"></td>
+          <td class="ui-widget-content ui-state-disabled" style="width:1%">
+            <input name="ext" style="width:4em;text-align:center;background:transparent" type="text" disabled>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <table tabindex="3">
+      <tbody>
+        <tr>
+          <td class="ui-widget-header" colspan="2">Straße</td>
+          <td class="ui-widget-content" colspan="2">
+            <input type="text" name="strasse" class="upd">
+          </td>
+          <td class="ui-widget-header">Name</td>
+          <td class="ui-widget-content">
+            <input type="text" name="name" class="upd">
+          </td>
+        </tr>
+        <tr>
+          <td class="ui-widget-header" style="width:1%">PLZ</td>
+          <td class="ui-widget-header" style="width:1%">Ort</td>
+          <td class="ui-widget-content" style="width:10%">
+            <input type="text" name="plz" class="upd">
+          </td>
+          <td class="ui-widget-content">
+            <input type="text" name="ort" class="upd">
+          </td>
+          <td class="ui-widget-header" style="width:1%">Anrede</td>
+          <td class="ui-widget-content" style="width:49%">
+            <input type="text" name="anrede" class="upd">
+          </td>
+        </tr>
+        <tr>
+          <td class="ui-widget-header" colspan="2">Region</td>
+          <td class="ui-widget-content" colspan="2">
+            <input type="text" name="region" class="upd">
+          </td>
+          <td class="ui-widget-header">Institut</td>
+          <td class="ui-widget-content">
+            <input type="text" name="institut" class="upd">
+          </td>
+        </tr>
+        <tr>
+          <td class="ui-widget-header" colspan="2">Land</td>
+          <td class="ui-widget-content" colspan="2">
+            <input type="text" name="land" class="upd">
+          </td>
+          <td class="ui-widget-header">HoA</td>
+          <td class="ui-widget-content">
+            <input type="text" name="hoa" class="upd">
+          </td>
+        </tr>
+        <tr>
+          <td class="ui-widget-header" colspan="2">Staat</td>
+          <td class="ui-widget-content" colspan="2">
+            <input type="text" name="staat" class="upd">
+          </td>
+          <td class="ui-widget-header">Versand</td>
+          <td class="ui-widget-content" colspan="3">
+            <input type="text" name="versand" class="upd">
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <table style="width:100%">
+      <tbody>
+        <tr>
+          <td class="ui-widget-header" rowspan="2">
+            <div class="c_tabs" style="padding:0;margin:0;border:0">
+              <ul style="font-size:0.8em">
+                <li><a href="#t-1">Kontakt</a></li>
+                <li><a href="#t-5">Notiz</a></li>
+              </ul>
+              <div id="t-1">
+                <textarea name="kontakt" class="upd"></textarea>
+              </div>
+              <div id="t-5">
+                <textarea name="notiz" class="upd"></textarea>
+              </div>
+            </div>
+          </td>
+          <td class="ui-widget-header" style="width:15em;white-space:nowrap">
+            <span class="lang" style="float:left">Contact</span>
+            <span style="display:inline-block;float:right;font-size:0.6em">
+              <button title="Insert" class="lang-title" data-choice="INS" disabled>
+                <i class="fa fa-plus"></i>
+              </button>
+            </span>
+          </td>
+        </tr>
+        <tr>
+          <td class="ui-widget-content" style="vertical-align:top">
+            <div style="height:10em;display:block;overflow:auto;overflow-x:hidden">
+              <ul class="contact" style="width:15em;border:0"></ul>
+            </div>
+          </td>
+      </tbody>
+    </table>
+  </form>
+</div>

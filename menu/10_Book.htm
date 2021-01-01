@@ -1,0 +1,230 @@
+<style type="text/css">
+<!--
+#id_Book {
+  width:100%;
+  height:auto;
+  overflow:auto;
+}
+#id_Book .mk-content-right,
+#id_Book .mk-search,
+#id_Book .mk-header {
+  border:0;
+}
+#id_Book .mk-footer {
+  border-right-width:0;
+  border-bottom-width:0;
+}
+-->
+</style>
+<script language="JavaScript" type="text/javascript">
+// #####################################################################
+jQuery(function($){
+  // -------------------------------------------------------------------
+  var $T,
+      slfMenuFile = oUser.menu;
+  // -------------------------------------------------------------------
+  make();
+  // -------------------------------------------------------------------
+  function selectMenu(ui){
+    var oldMenuFile  = $(ui.oldMenu).data("menu"),
+        newMenuFile  = $(ui.newMenu).data("menu");
+
+    if(DEBUG > 0 && newMenuFile != slfMenuFile){
+      var div_menu = $("#id_Content>div").filter('[data-menu="'+oldMenuFile+'"]');
+      $.Topic("selectMenu").unsubscribe(selectMenu);
+      $.Topic("logout").unsubscribe(saveOption);
+      $T.tables("destroy");
+      div_menu.detach();
+      return
+    }
+
+    if(newMenuFile == slfMenuFile){
+      goTo();
+      $.Topic("logout").subscribe(saveOption);
+      if(typeof $T != "undefined")
+        $T
+        .tables("refresh")
+        .focus();
+    } else if(oldMenuFile == slfMenuFile){
+      saveOption();
+      $.Topic("logout").unsubscribe(saveOption);
+    }
+  }
+  // -------------------------------------------------------------------
+  function saveOption(){
+    $T.tables("saveOption").focus();
+  }
+  // -------------------------------------------------------------------
+  function make(){
+    $.Topic("selectMenu").subscribe(selectMenu);
+    $.Topic("logout").subscribe(saveOption);
+    $T = $("#id_Book").tables({
+      colModel: [{
+        indx:   "id",
+        title:  "ID",
+        show:    true,
+        search:  true,
+        align:  "right",
+        width:  "3em"
+      },{
+        indx:   "autor",
+        title:  "Autor",
+        show:    true,
+        search:  true,
+        align:  "left",
+        width:  "20em"
+      },{
+        indx:   "titel",
+        title:  "Title",
+        show:    true,
+        search:  true,
+        align:  "left",
+        width:  "30em"
+      },{
+        indx:   "stmp",
+        title:  "Stamp",
+        show:    false,
+        search:  true,
+        align:  "center",
+        width:  "10em"
+      }],
+      dataModel: $.extend({}, mysqlDataModel),
+      alignTitle: "center",
+      Left:       2,
+      Header:     null,
+      Footer:     null,
+      ID:         "id",
+      recId:      0,
+
+      User:       oUser.dbuser, // dbuser
+      Sign:       "Book",     // navig identification
+
+      SQL_SysBase:  SQL_SYS_BASE,
+      SQL_SysTable: SQL_SYS_TABLE,
+      SQL_Base:     SQL_SYS_BASE,
+      SQL_Table:    "book",
+      SQL_Query:    "SELECT * FROM book",
+
+      // functions + events
+      i18n: _,
+      cellDblClk: function(ev, ui){
+        console.log("cellDblClk", ev, ui);
+      },
+      beforeEdit: function(ev, ui){
+        $("button", ui.form).button("enable");
+      },
+      closeEdit: function(ev, ui){
+        $("button", ui.form).button("disable");
+      },
+      build: goTo,
+    });
+    setTimeout(function(){
+      $T.focus();
+    }, 1000);
+  }
+  // -------------------------------------------------------------------
+  function goTo(){
+    change_all_lang($T);
+    setTimeout(function(){
+      if($T)
+        $T.tables("refresh");
+    }, 100);
+  }
+  // -------------------------------------------------------------------
+});
+// #####################################################################
+</script>
+<div id="id_Book" tabindex="1" style="display:none">
+  <form id="id_Book_Form" style="display:block" class="mk-tables-form">
+    <input type="submit" tabindex="-1" style="position:absolute; top:-1000px;display:none">
+    <table id="id_Book_Table" tabindex="2">
+      <tbody>
+        <tr>
+          <td class="ui-widget-content ui-state-disabled" style="width:1%">
+            <input name="id" style="width:4em;text-align:center;background:transparent" type="text" disabled>
+          </td>
+          <td class="ui-widget-content ui-state-disabled" style="width:1%">
+            <input name="stmp" style="width:10em;text-align:center;background:transparent" type="text" disabled>
+          </td>
+          <td class="ui-widget-header" style="width:1%">Titel</td>
+          <td class="ui-widget-content">
+            <input type="text" name="titel" class="upd">
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <table style="width:100%">
+      <tbody>
+        <tr>
+          <td class="ui-widget-header" style="width:1%">Sachgebiet</td>
+          <td class="ui-widget-content" style="width:49%">
+            <input type="text" name="sachgebiet" class="upd">
+          </td>
+          <td class="ui-widget-header" style="width:1%">Untertitel</td>
+          <td class="ui-widget-content" style="width:49%">
+            <input type="text" name="untertitel" class="upd">
+          </td>
+        </tr>
+        <tr>
+          <td class="ui-widget-header">Autor</td>
+          <td class="ui-widget-content">
+            <input type="text" name="autor" class="upd">
+          </td>
+          <td class="ui-widget-header">Herausgeber</td>
+          <td class="ui-widget-content">
+            <input type="text" name="herausgeber" class="upd">
+          </td>
+        </tr>
+        <tr>
+          <td class="ui-widget-header">Verlag</td>
+          <td class="ui-widget-content">
+            <input type="text" name="verlag" class="upd">
+          </td>
+          <td class="ui-widget-header">Jahr</td>
+          <td class="ui-widget-content">
+            <input type="text" name="jahr" class="upd">
+          </td>
+        </tr>
+        <tr>
+          <td class="ui-widget-header">Erwerb</td>
+          <td class="ui-widget-content">
+            <input type="text" name="erwerb" class="upd">
+          </td>
+          <td class="ui-widget-header">Preis</td>
+          <td class="ui-widget-content">
+            <input type="text" name="preis" class="upd">
+          </td>
+        </tr>
+        <tr>
+          <td class="ui-widget-header">Notiz</td>
+          <td class="ui-widget-content">
+            <input type="text" name="notiz" class="upd">
+          </td>
+          <td class="ui-widget-header">Stichwort</td>
+          <td class="ui-widget-content">
+            <input type="text" name="stichwort" class="upd">
+          </td>
+        </tr>
+        <tr>
+          <td class="ui-widget-header">Standort</td>
+          <td class="ui-widget-content">
+            <input type="text" name="standort" class="upd">
+          </td>
+          <td class="ui-widget-header">Ausgeliehen</td>
+          <td class="ui-widget-content">
+            <input type="text" name="ausgeliehen" class="upd">
+          </td>
+        </tr>
+
+        <tr>
+          <td class="ui-widget-header" colspan="4" style="text-align:left">Inhalt</td>
+        </tr>
+        <tr>
+          <td class="ui-widget-content" colspan="4">
+            <textarea name="inhalt" style="min-height:10em" class="upd"></textarea>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </form>
+</div>

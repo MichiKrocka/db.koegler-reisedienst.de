@@ -1,0 +1,298 @@
+<style type="text/css">
+<!--
+#id_Data {
+  width:100%;
+  height:auto;
+  overflow:auto;
+}
+#id_Data .pq-grid-bottom {
+  border-radius:0;
+}
+#id_Data li.ui-menu-item ul,
+#id_Data li.ui-menu-item li {
+  width:auto;
+  ooverflow:hidden;
+}
+
+#id_Data_Table td.ui-widget-header {
+  width:1% !important;
+}
+#id_Data_Form textarea {
+  width:100%;
+  height:5em;
+}
+.ui-autocomplete {
+  max-height: 70px;
+  height: 70px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: absolute;
+  cursor: default;
+  z-index:1000 !important;
+}
+#id_Data ul.ui-menu{
+}
+-->
+</style>
+<div id="id_Data" tabindex="1" style="display:hidden">
+  <form id="id_Data_Form" style="display:block" class="mk-tables-form">
+    <input type="submit" tabindex="-1" style="position:absolute; top:-1000px;display:none">
+    <table id="id_Data_Table" tabindex="2">
+    </table>
+  </form>
+</div>
+<script language="JavaScript" type="text/javascript">
+// #####################################################################
+jQuery(function($){
+  // -------------------------------------------------------------------
+  var $T = null,
+      MenuLi = "",
+      colModel = [],
+      slfMenuFile = oUser.menu;
+  var NCOL = 3;
+  make();
+  // -------------------------------------------------------------------
+  // event handler for menu changed
+  function selectMenu(ui){
+    var oldMenuFile  = $(ui.oldMenu).data("menu"),
+        newMenuFile  = $(ui.newMenu).data("menu");
+
+    if(DEBUG > 0 && newMenuFile != slfMenuFile){
+      div_menu = $("#id_Content>div").filter('[data-menu="'+oldMenuFile+'"]');
+      $.Topic("selectMenu").unsubscribe(selectMenu);
+      if(typeof $T != "undefined")
+        $T.tables("destroy");
+      div_menu.detach();
+      return
+    }
+
+    if(newMenuFile == slfMenuFile){
+      if(typeof $T != "undefined")
+        $T
+        .tables("refresh")
+        .focus();
+    } else if(oldMenuFile == slfMenuFile){
+    }
+  }
+  // -------------------------------------------------------------------
+  function make(){
+    // subscribe events
+    $.Topic("selectMenu").subscribe(selectMenu);
+    makeMenuLi(function(){
+      makeColModel(function(){
+        makeGrid();
+      });
+    });
+  }
+  // -------------------------------------------------------------------
+  function makeMenuLi(callBack){
+    var li = [
+          '<li data-choice="CANCEL"><div>'+_("Cancel")+'</div></li>',
+          '<li class=""></li>'],
+        o = {
+          id: "259e88811b229050b08679b67147b4ab",
+          base: SQL_SYS_BASE,
+          cmd:  [{
+            sgn:   "MENU_SYS",
+            query: "SHOW TABLES",
+            para: []
+          }]
+        };
+    $.post("/sql", o, function(D){
+      D = D.MENU_SYS;
+      if(D.length){
+        DefaultTab = {tb: D[0].Tables_in_database, db: SQL_SYS_BASE};
+      }
+      for(var i in D){
+        if(i == 0 && typeof oUser.val["dataTable"] == "undefined"){
+          oUser.val["dataTable"] = D[i].Tables_in_database;
+        }
+        li.push(
+          '<li><div>'+
+          D[i].Tables_in_database+
+          '</div></li>'
+        );
+      }
+      MenuLi = li.join("");
+      if(callBack)
+        callBack();
+    })
+    .fail(function(er){
+      console.log(er.responseText);
+    });
+  }
+  // ...................................................................
+  // make ul menu
+  function makeMenuUl(ui){
+    var self = ui.element,
+        el = ui.button,
+        $menu = $('ul.mk-tables-menu', self.element);
+    $menu.css({
+      "height":     "80%",
+      "overflow":   "auto",
+      "overflow-x": "hidden"
+    });
+    if(!$menu.is(":hidden")){
+      $(this)
+      .menu("destroy")
+      .hide();
+      self._overlay(false);
+      self.element.focus();
+      return false;
+    }
+    self._overlay(true);
+    $menu
+    .html(MenuLi)
+    .show()
+    .position({
+      my: "left top",
+      at: "left bottom",
+      of: el
+    })
+    .menu({
+      select: function(ev, uis){
+        $menu.menu("option", "close")();
+        var c = $(uis.item).data("choice");
+        switch(c){
+          case "CANCEL":
+            break;
+          default:
+            oUser.val.dataTable = $(uis.item).text();
+            makeColModel(function(){
+              makeGrid();
+            });
+        }
+      },
+      close: function(){
+        $menu
+        .css({
+          "height":     "",
+          "overflow":   "",
+          "overflow-x": ""
+        })
+        .off()
+        .menu("destroy")
+        .hide();
+        self._overlay(false);
+        self.element.focus();
+      }
+    })
+    .on("keydown", function(ev){
+      if(ev.which == $.ui.keyCode.ESCAPE){
+        $menu.menu("option", "close")();
+      }
+      ev.preventDefault();
+      return false;
+    });
+    $("div:contains('"+oUser.val.dataTable+"')", $menu)
+    .get(0)
+    .scrollIntoView();
+    $($menu).on("mousewheel",  wheel);
+    $("ul", $menu).on("mousewheel",  wheel);
+    // mousewheel
+    function wheel(ev){
+      var dY = ev.originalEvent.deltaY;
+      $(this).scrollTop($(this).scrollTop() + 4 * dY);
+      return false;
+    }
+    setTimeout(function(){
+      $menu.focus();
+    }, 100);
+  }
+  // -------------------------------------------------------------------
+  function makeGrid(){
+    // table  grid
+    $T = $("#id_Data");
+    $T.tables({
+      colModel:    colModel,
+      dataModel:   $.extend(true, {}, mysqlDataModel),
+      accessModel: oAccess[slfMenuFile],
+      alignTitle:  "center",
+      Rows:      15,
+      Header:    null,
+      Footer:    null,
+      Icons:     '<button data-choice="CHANGE">'+oUser.val.dataTable+'</button>',
+      ID:        "id",
+      autoSave:  false,
+
+      User:         oUser.dbuser, // dbuser
+      Sign:         SIGN_DATA,    // navig identification
+
+      SQL_SysBase:  SQL_SYS_BASE,
+      SQL_SysTable: SQL_SYS_TABLE,
+
+      SQL_Base:     SQL_SYS_BASE,
+      SQL_Table:    oUser.val.dataTable,
+      SQL_Query:    "SELECT * FROM " + oUser.val.dataTable,
+
+      // functions + events
+      i18n:         function(x){return(x)},
+      build: function(ev, ui){
+        change_all_lang(this);
+      },
+      clickButton: function(ev, ui){
+        makeMenuUl(ui);
+      },
+      build: function(ev, ui){
+        setTimeout(function(){
+          $T.focus();
+        }, 1000);
+      }
+    });
+  }
+  // -------------------------------------------------------------------
+  function makeColModel(callBack){
+    if($T !== null)
+      $T.tables("destroy");
+    var o = {
+      id: "259e88811b229050b08679b67147b4ab",
+      base: SQL_SYS_BASE,
+      cmd:  [{
+        sgn:   "DEL",
+        query: "DELETE FROM sys WHERE dbuser=? AND fun='NAVIG' AND sign=?",
+        para: [oUser.dbuser, SIGN_DATA]
+      },{
+        sgn:   "COLS",
+        query: "SHOW COLUMNS FROM "+oUser.val.dataTable,
+        para: []
+      }]
+    };
+    $.post("/sql", o, function(D){
+      D = D.COLS;
+      var tr = [],
+          iC = 1;
+      colModel = [];
+      for(var i in D){
+        if(D[i].Type == "blob")
+          continue;
+        // colModel
+        colModel.push({
+          indx:   D[i].Field,
+          title:  D[i].Field == "id" ? "_"+D[i].Field+"_" : D[i].Field,
+          show:   true,
+          search: true,
+          align:  "left",
+          width:  "7em"
+        });
+        // form
+        tr.push($.sprintf(
+          '<td class="ui-widget-header">%s</td>'+
+          '<td class="ui-widget-content"><textarea name="%s" class="upd"></textarea></td>',
+          D[i].Field, D[i].Field
+        ));
+        if(!(iC % NCOL))
+          tr.push('</tr><tr>');
+        iC++;
+      }
+      if(!(iC % NCOL))
+        tr.push('<td colspan="2" class="ui-widget-header"></td>');
+      $("#id_Data_Table").html('<tr>'+tr.join("")+'</tr>');
+      $("td.ui-widget-content", "#id_Data_Table").css({
+        width: (100 / NCOL - 1)+"% !important"
+      });
+      callBack();
+    });
+  }
+  // -------------------------------------------------------------------
+});
+</script>
