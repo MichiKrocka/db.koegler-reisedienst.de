@@ -1,7 +1,7 @@
 <?php
   use PHPMailer\PHPMailer\PHPMailer;
   use PHPMailer\PHPMailer\Exception;
-  require '/var/www/vendor/autoload.php';
+//  require '/var/www/vendor/autoload.php';
 
 //file_put_contents("/tmp/sql2", var_export($_REQUEST, true).PHP_EOL, FILE_APPEND);
 //file_put_contents("/tmp/sql", var_export($_FILES, true).PHP_EOL, FILE_APPEND);
