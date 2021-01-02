@@ -1,7 +1,7 @@
 <?php
   use PHPMailer\PHPMailer\PHPMailer;
   use PHPMailer\PHPMailer\Exception;
-//  require '/var/www/vendor/autoload.php';
+  require '/usr/share/php/libphp-phpmailer/autoload.php';
 
 //file_put_contents("/tmp/sql2", var_export($_REQUEST, true).PHP_EOL, FILE_APPEND);
 //file_put_contents("/tmp/sql", var_export($_FILES, true).PHP_EOL, FILE_APPEND);
@@ -33,7 +33,7 @@ header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 // #####################################################################
 //file_put_contents("/tmp/sql", "ALL: ".var_export($_REQUEST, true).PHP_EOL, FILE_APPEND);
-file_put_contents("/tmp/sql", "REST: ".$_REQUEST["rest"].PHP_EOL, FILE_APPEND);
+//file_put_contents("/tmp/sql", "REST: ".$_REQUEST["rest"].PHP_EOL, FILE_APPEND);
 switch($_REQUEST["rest"]){
   case "sql":
     Sql();
@@ -89,7 +89,7 @@ function Sql(){
     else
       $para = array();
     $cmd = $P["cmd"][$iA];
-file_put_contents("/tmp/sql", "SGN: ".var_export($cmd["sgn"], true).PHP_EOL."\n".var_export($cmd, true), FILE_APPEND);
+file_put_contents("/tmp/sql", "SGN ${iA}: ".var_export($cmd["sgn"], true).PHP_EOL."\n".var_export($cmd, true), FILE_APPEND);
     // .................................................................
     if($P["cmd"][$iA]["sgn"] == "ID2IX"){
       // Filter Records ................................................
@@ -227,7 +227,7 @@ file_put_contents("/tmp/sql", "SGN: ".var_export($cmd["sgn"], true).PHP_EOL."\n"
       $A = $PDO->query($SQL);
     // .................................................................
     } else if(preg_match("/^INSERT|^DELETE|^UPDATE|^REPLACE/", $cmd["query"])){
-//file_put_contents("/tmp/sql", "ALL: ".var_export($P, true).PHP_EOL, FILE_APPEND);
+//file_put_contents("/tmp/sql", "\nALL: ".var_export($P, true).PHP_EOL, FILE_APPEND);
       $ST = $PDO->prepare($cmd["query"]);
       if($ST && $ST->execute($para) !== null){
         $R[$P["cmd"][$iA]["sgn"]]["lastID"] = $PDO->lastInsertId();
